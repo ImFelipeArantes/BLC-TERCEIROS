@@ -1,7 +1,6 @@
 import customtkinter as ctk
 import pandas as pd
 import warnings
-import pyodbc
 from unidecode import unidecode
 from sqlalchemy import create_engine
 warnings.filterwarnings('ignore')
@@ -15,12 +14,14 @@ janela = ctk.CTk()
 engine = create_engine('mysql+pymysql://viabilidade:senha_segura123#@10.0.15.243:3306/desenvolvimento_viabilidade')
 
 
+
 def arquivo_entrada():
     global arquivo_entrada_sevs_teia, sevs_teia, modelo_mapinfo
     arquivo_entrada_sevs_teia = ctk.filedialog.askopenfilename(title='Abrir arquivo de extração do TEIA')
     sevs_teia = pd.read_excel(arquivo_entrada_sevs_teia)
     modelo_mapinfo = pd.read_excel('./arquivos/arquivo_modelo.xlsx')
     modelo_mapinfo[['SEV', 'LAT', 'LONG']] = sevs_teia[['SEV', 'LATITUDE', 'LONGITUDE']]
+    
 
     button_browse = ctk.CTkButton(janela,text="Arquivo TEIA",height=20,width=35,corner_radius=8,fg_color='green',hover_color='blue', command=arquivo_entrada)
     button_browse.place(x=10,y=100)
@@ -34,8 +35,10 @@ def gerar_arq_mapinfo():
     try:
         # provedores = pd.read_sql('SELECT * FROM localidades_terceiros_bl', engine)
         valores_ = pd.read_sql('SELECT * FROM valores_terceiros_internet', engine)
+        valores_.to_excel('valores_terceiros_internet.xlsx',index=False)
     except:
         print('NAO FOI POSSIVEL CONECTAR NO BANCO DE DADOS')
+        valores_ = pd.read_excel('./arquivos/valores_terceiros_internet.xlsx')
         pass
     modelo_mapinfo.fillna('').to_excel(f'SAIDAS/arquivo_mapinfo_{now}.xlsx',index=False)
 
@@ -86,6 +89,8 @@ def gerar_arq_mapinfo():
 def arquivo_retorno():
     global arquivo_retorno_map_info,retorno_mapinfo,fechamento,inviaveis
 
+    MESES = int(meses.get())
+
     arquivo_retorno_map_info = ctk.filedialog.askopenfilename(title='Abrir arquivo de retorno MAPINFO')
     
     inviaveis = pd.DataFrame(columns=['SEV','MOTIVO'])
@@ -132,10 +137,9 @@ def arquivo_retorno():
                             retorno_mapinfo.at[i,f'STATUS_NUVEM'] = retorno_mapinfo.at[i,f'STATUS_NUVEM']+f'/{p} INVIAVEL POR NUVEM E FORA DE NUVEM GENERICA'
                     else:
                         if len(custo_medio[custo_medio.CNL == v.CNL]) > 0:
-                            provedor_cm = custo_medio[custo_medio.CNL == v.CNL][f'PROVEDOR_{int(v.VELOCIDADE)}M'].values[0]
-                            instalacao_cm = custo_medio[custo_medio.CNL == v.CNL][f'INST_{int(v.VELOCIDADE)}M'].values[0]
-                            mensalidade_cm = custo_medio[custo_medio.CNL == v.CNL][f'MENSAL_{int(v.VELOCIDADE)}M'].values[0]
-                            retorno_mapinfo.at[i,'PROVEDOR_CM'] = provedor_cm
+                            instalacao_cm = custo_medio[custo_medio.CNL == v.CNL][f'TERCEIROS INTERNET ASSIMÉTRICA INST - ATÉ {int(v.VELOCIDADE)}M'].values[0]
+                            mensalidade_cm = custo_medio[custo_medio.CNL == v.CNL][f'TERCEIROS INTERNET ASSIMÉTRICA MENSAL - ATÉ {int(v.VELOCIDADE)}M'].values[0]
+                            retorno_mapinfo.at[i,'PROVEDOR_CM'] = 'GENERICO - BANDA LARGA'
                             retorno_mapinfo.at[i,'INSTALACAO_PROVEDOR_CM'] = instalacao_cm
                             retorno_mapinfo.at[i,'MENSALIDADE_PROVEDOR_CM'] = mensalidade_cm
                             if retorno_mapinfo.at[i,f'STATUS_NUVEM'] == '':
@@ -243,10 +247,9 @@ def arquivo_retorno():
                     else:
                         if len(custo_medio[custo_medio.CNL == v.CNL]) > 0:
                             
-                            provedor_cm = custo_medio[custo_medio.CNL == v.CNL][f'PROVEDOR_{int(v.VELOCIDADE)}M'].values[0]
-                            instalacao_cm = custo_medio[custo_medio.CNL == v.CNL][f'INST_{int(v.VELOCIDADE)}M'].values[0]
-                            mensalidade_cm = custo_medio[custo_medio.CNL == v.CNL][f'MENSAL_{int(v.VELOCIDADE)}M'].values[0]
-                            retorno_mapinfo.at[i,'PROVEDOR_CM'] = provedor_cm
+                            instalacao_cm = custo_medio[custo_medio.CNL == v.CNL][f'TERCEIROS INTERNET ASSIMÉTRICA INST - ATÉ {int(v.VELOCIDADE)}M'].values[0]
+                            mensalidade_cm = custo_medio[custo_medio.CNL == v.CNL][f'TERCEIROS INTERNET ASSIMÉTRICA MENSAL - ATÉ {int(v.VELOCIDADE)}M'].values[0]
+                            retorno_mapinfo.at[i,'PROVEDOR_CM'] = 'GENERICO - BANDA LARGA'
                             retorno_mapinfo.at[i,'INSTALACAO_PROVEDOR_CM'] = instalacao_cm
                             retorno_mapinfo.at[i,'MENSALIDADE_PROVEDOR_CM'] = mensalidade_cm
                             if retorno_mapinfo.at[i,f'STATUS_NUVEM'] == '':
@@ -264,7 +267,15 @@ def arquivo_retorno():
                                 # contrato = provedores[(provedores.PROVEDOR == p) & (provedores.SIGLA_MUNICIPIO == v.CNL)].NUM_CONTRATO.values[0]
 
                                 # valor = valores[(valores.PROVEDOR == p) & (valores.SIGLA_MUNICIPIO == v.CNL) & (valores.OBS.str.contains('TABELA 2'))]
-                                if len(valor[(valor.VEL == v.VELOCIDADE) & (valor.PRAZO == '12 MESES')]) > 0:
+                                if len(valor[(valor.VEL == v.VELOCIDADE) & (valor.PRAZO == f'{MESES} MESES')]) > 0:
+                                    valor = valor[(valor.VEL == v.VELOCIDADE) & (valor.PRAZO == f'{MESES} MESES')]
+                                    retorno_mapinfo.at[i,f'INSTALACAO_PROVEDOR_{p}'] = valor.TAXA_INSTALACAO.values[0]
+                                    retorno_mapinfo.at[i,f'MENSALIDADE_PROVEDOR_{p}'] = valor.CUSTO_MENSAL.values[0]
+                                    if retorno_mapinfo.at[i,f'STATUS_NUVEM'] == '':
+                                        retorno_mapinfo.at[i,f'STATUS_NUVEM'] = 'SHOPPING VIAVEL POR NUVEM CUSTO PADRAO'
+                                    else:
+                                        retorno_mapinfo.at[i,f'STATUS_NUVEM'] = retorno_mapinfo.at[i,f'STATUS_NUVEM'] = 'SHOPPING VIAVEL POR NUVEM CUSTO PADRAO'
+                                elif len(valor[(valor.VEL == v.VELOCIDADE) & (valor.PRAZO == '12 MESES')]) > 0:
                                     valor = valor[(valor.VEL == v.VELOCIDADE) & (valor.PRAZO == '12 MESES')]
                                     retorno_mapinfo.at[i,f'INSTALACAO_PROVEDOR_{p}'] = valor.TAXA_INSTALACAO.values[0]
                                     retorno_mapinfo.at[i,f'MENSALIDADE_PROVEDOR_{p}'] = valor.CUSTO_MENSAL.values[0]
@@ -273,6 +284,21 @@ def arquivo_retorno():
                                     else:
                                         retorno_mapinfo.at[i,f'STATUS_NUVEM'] = retorno_mapinfo.at[i,f'STATUS_NUVEM'] = 'SHOPPING VIAVEL POR NUVEM CUSTO PADRAO'
                                 # valores[(valores.contrato == contrato) & valores.obs.str.contains('COMPARTILHADO') & (valores.VEL > v.VELOCIDADE) & (valores.tempo_contrato == '12 meses')]
+                                elif len(valores[(valores.PROVEDOR == p) & (valores.SIGLA_MUNICIPIO == v.CNL) & (valores.VEL > v.VELOCIDADE) & (valores.PRAZO == f'{MESES} MESES')]) > 0:
+                                    
+                                    valor = valores[(valores.PROVEDOR == p) & (valores.SIGLA_MUNICIPIO == v.CNL) & (valores.OBS.str.contains('TABELA 2')) & (valores.VEL > v.VELOCIDADE) & (valores.PRAZO == f'{MESES} MESES')].sort_values(by=['VEL'],ascending=True)
+                                    if len(valor) > 0:
+
+                                        retorno_mapinfo.at[i,f'INSTALACAO_PROVEDOR_{p}'] = valor.TAXA_INSTALACAO.values[0]
+                                        retorno_mapinfo.at[i,f'MENSALIDADE_PROVEDOR_{p}'] = valor.CUSTO_MENSAL.values[0]
+                                        if retorno_mapinfo.at[i,f'STATUS_NUVEM'] == '':
+                                            retorno_mapinfo.at[i,f'STATUS_NUVEM'] = 'SHOPPING VIAVEL POR NUVEM CUSTO PADRAO'
+                                        else:
+                                            retorno_mapinfo.at[i,f'STATUS_NUVEM'] = retorno_mapinfo.at[i,f'STATUS_NUVEM'] = 'SHOPPING VIAVEL POR NUVEM CUSTO PADRAO'
+                                    else:
+                                        retorno_mapinfo.at[i,f'INSTALACAO_PROVEDOR_{p}'] = 0
+                                        retorno_mapinfo.at[i,f'MENSALIDADE_PROVEDOR_{p}'] = 0
+                                        retorno_mapinfo.at[i,f'STATUS_NUVEM'] = 'SHOPPING VIAVEL POR NUVEM CUSTO PADRAO'
                                 elif len(valores[(valores.PROVEDOR == p) & (valores.SIGLA_MUNICIPIO == v.CNL) & (valores.VEL > v.VELOCIDADE) & (valores.PRAZO == '12 MESES')]) > 0:
                                     
                                     valor = valores[(valores.PROVEDOR == p) & (valores.SIGLA_MUNICIPIO == v.CNL) & (valores.OBS.str.contains('TABELA 2')) & (valores.VEL > v.VELOCIDADE) & (valores.PRAZO == '12 MESES')].sort_values(by=['VEL'],ascending=True)
@@ -295,7 +321,16 @@ def arquivo_retorno():
                                 # contrato = provedores[(provedores.PROVEDOR == p) & (provedores.SIGLA_MUNICIPIO == v.CNL)].NUM_CONTRATO.values[0]
 
                                 # valor = valores[(valores.PROVEDOR == p) & (valores.SIGLA_MUNICIPIO == v.CNL) & (valores.OBS.str.contains('TABELA 1'))]
-                                if len(valor[(valor.VEL == v.VELOCIDADE) & (valor.PRAZO == '12 MESES')]) > 0:
+                                if len(valor[(valor.VEL == v.VELOCIDADE) & (valor.PRAZO == f'{MESES} MESES')]) > 0:
+                                    valor = valor[(valor.VEL == v.VELOCIDADE) & (valor.PRAZO == f'{MESES} MESES')]
+                                    retorno_mapinfo.at[i,f'INSTALACAO_PROVEDOR_{p}'] = valor.TAXA_INSTALACAO.values[0]
+                                    retorno_mapinfo.at[i,f'MENSALIDADE_PROVEDOR_{p}'] = valor.CUSTO_MENSAL.values[0]
+                                    if retorno_mapinfo.at[i,f'STATUS_NUVEM'] == '':
+                                        retorno_mapinfo.at[i,f'STATUS_NUVEM'] = f'{p} VIAVEL POR NUVEM/COM CONTRATO COM VELOCIDADE SOLICITADA'
+                                    else:
+                                        retorno_mapinfo.at[i,f'STATUS_NUVEM'] = retorno_mapinfo.at[i,f'STATUS_NUVEM']+f'/{p} VIAVEL POR NUVEM/COM CONTRATO COM VELOCIDADE SOLICITADA'
+                                # valores[(valores.contrato == contrato) & valores.obs.str.contains('COMPARTILHADO') & (valores.VEL > v.VELOCIDADE) & (valores.tempo_contrato == '12 meses')]
+                                elif len(valor[(valor.VEL == v.VELOCIDADE) & (valor.PRAZO == '12 MESES')]) > 0:
                                     valor = valor[(valor.VEL == v.VELOCIDADE) & (valor.PRAZO == '12 MESES')]
                                     retorno_mapinfo.at[i,f'INSTALACAO_PROVEDOR_{p}'] = valor.TAXA_INSTALACAO.values[0]
                                     retorno_mapinfo.at[i,f'MENSALIDADE_PROVEDOR_{p}'] = valor.CUSTO_MENSAL.values[0]
@@ -319,6 +354,21 @@ def arquivo_retorno():
                                         retorno_mapinfo.at[i,f'INSTALACAO_PROVEDOR_{p}'] = 0
                                         retorno_mapinfo.at[i,f'MENSALIDADE_PROVEDOR_{p}'] = 0
                                         retorno_mapinfo.at[i,f'STATUS_NUVEM'] = f'INVIAVEL POR NUVEM/SEM CONTRATO COM VELOCIDADE SOLICITADA'
+                                elif len(valores[(valores.PROVEDOR == p) & (valores.SIGLA_MUNICIPIO == v.CNL) & (valores.VEL > v.VELOCIDADE) & (valores.PRAZO == f'{MESES} MESES')]) > 0:
+                                    
+                                    valor = valores[(valores.PROVEDOR == p) & (valores.SIGLA_MUNICIPIO == v.CNL) & (valores.OBS.str.contains('TABELA 1')) & (valores.VEL > v.VELOCIDADE) & (valores.PRAZO == f'{MESES} MESES')].sort_values(by=['VEL'],ascending=True)
+                                    if len(valor) > 0:
+
+                                        retorno_mapinfo.at[i,f'INSTALACAO_PROVEDOR_{p}'] = valor.TAXA_INSTALACAO.values[0]
+                                        retorno_mapinfo.at[i,f'MENSALIDADE_PROVEDOR_{p}'] = valor.CUSTO_MENSAL.values[0]
+                                        if retorno_mapinfo.at[i,f'STATUS_NUVEM'] == '':
+                                            retorno_mapinfo.at[i,f'STATUS_NUVEM'] = f'{p} VIAVEL POR NUVEM/SEM CONTRATO COM VELOCIDADE SOLICITADA/VELOCIDADE CONSIDERADA {int(valor.VEL.values[0])}'
+                                        else:
+                                            retorno_mapinfo.at[i,f'STATUS_NUVEM'] = retorno_mapinfo.at[i,f'STATUS_NUVEM']+f'/{p} VIAVEL POR NUVEM/SEM CONTRATO COM VELOCIDADE SOLICITADA/VELOCIDADE CONSIDERADA {int(valor.VEL.values[0])}'
+                                    else:
+                                        retorno_mapinfo.at[i,f'INSTALACAO_PROVEDOR_{p}'] = 0
+                                        retorno_mapinfo.at[i,f'MENSALIDADE_PROVEDOR_{p}'] = 0
+                                        retorno_mapinfo.at[i,f'STATUS_NUVEM'] = f'INVIAVEL POR NUVEM/SEM CONTRATO COM VELOCIDADE SOLICITADA'
                     else:
 
                         valor = valores[(valores.PROVEDOR == p) & (valores.SIGLA_MUNICIPIO == v.CNL)]
@@ -327,7 +377,17 @@ def arquivo_retorno():
                             # contrato = provedores[(provedores.PROVEDOR == p) & (provedores.SIGLA_MUNICIPIO == v.CNL)].NUM_CONTRATO.values[0]
                             
                             valor = valores[(valores.PROVEDOR == p) & (valores.SIGLA_MUNICIPIO == v.CNL)]
-                            if len(valor[(valor.VEL == v.VELOCIDADE) & (valor.PRAZO == '12 MESES')]) > 0:
+                            if len(valor[(valor.VEL == v.VELOCIDADE) & (valor.PRAZO == f'{MESES} MESES')]) > 0:
+                                
+                                valor = valor[(valor.VEL == v.VELOCIDADE) & (valor.PRAZO == f'{MESES} MESES')]
+                                retorno_mapinfo.at[i,f'INSTALACAO_PROVEDOR_{p}'] = valor.TAXA_INSTALACAO.values[0]
+                                retorno_mapinfo.at[i,f'MENSALIDADE_PROVEDOR_{p}'] = valor.CUSTO_MENSAL.values[0]
+                                if retorno_mapinfo.at[i,f'STATUS_NUVEM'] == '':
+                                    retorno_mapinfo.at[i,f'STATUS_NUVEM'] = f'{p} VIAVEL POR NUVEM/COM CONTRATO COM VELOCIDADE SOLICITADA'
+                                else:
+                                    retorno_mapinfo.at[i,f'STATUS_NUVEM'] = retorno_mapinfo.at[i,f'STATUS_NUVEM']+f'/{p} VIAVEL POR NUVEM/COM CONTRATO COM VELOCIDADE SOLICITADA'
+                            # valores[(valores.contrato == contrato) & valores.obs.str.contains('COMPARTILHADO') & (valores.VEL > v.VELOCIDADE) & (valores.tempo_contrato == '12 meses')]
+                            elif len(valor[(valor.VEL == v.VELOCIDADE) & (valor.PRAZO == '12 MESES')]) > 0:
                                 
                                 valor = valor[(valor.VEL == v.VELOCIDADE) & (valor.PRAZO == '12 MESES')]
                                 retorno_mapinfo.at[i,f'INSTALACAO_PROVEDOR_{p}'] = valor.TAXA_INSTALACAO.values[0]
@@ -337,6 +397,21 @@ def arquivo_retorno():
                                 else:
                                     retorno_mapinfo.at[i,f'STATUS_NUVEM'] = retorno_mapinfo.at[i,f'STATUS_NUVEM']+f'/{p} VIAVEL POR NUVEM/COM CONTRATO COM VELOCIDADE SOLICITADA'
                             # valores[(valores.contrato == contrato) & valores.obs.str.contains('COMPARTILHADO') & (valores.VEL > v.VELOCIDADE) & (valores.tempo_contrato == '12 meses')]
+                            elif len(valores[(valores.PROVEDOR == p) & (valores.SIGLA_MUNICIPIO == v.CNL) & (valores.VEL > v.VELOCIDADE) & (valores.PRAZO == f'{MESES} MESES')]) > 0:
+                                
+                                valor = valores[(valores.PROVEDOR == p) & (valores.SIGLA_MUNICIPIO == v.CNL) & (valores.VEL > v.VELOCIDADE) & (valores.PRAZO == f'{MESES} MESES')].sort_values(by=['VEL'],ascending=True)
+                                if len(valor) > 0:
+
+                                    retorno_mapinfo.at[i,f'INSTALACAO_PROVEDOR_{p}'] = valor.TAXA_INSTALACAO.values[0]
+                                    retorno_mapinfo.at[i,f'MENSALIDADE_PROVEDOR_{p}'] = valor.CUSTO_MENSAL.values[0]
+                                    if retorno_mapinfo.at[i,f'STATUS_NUVEM'] == '':
+                                        retorno_mapinfo.at[i,f'STATUS_NUVEM'] = f'{p} VIAVEL POR NUVEM/SEM CONTRATO COM VELOCIDADE SOLICITADA/VELOCIDADE CONSIDERADA {int(valor.VEL.values[0])}'
+                                    else:
+                                        retorno_mapinfo.at[i,f'STATUS_NUVEM'] = retorno_mapinfo.at[i,f'STATUS_NUVEM']+f'/{p} VIAVEL POR NUVEM/SEM CONTRATO COM VELOCIDADE SOLICITADA/VELOCIDADE CONSIDERADA {int(valor.VEL.values[0])}'
+                                else:
+                                    retorno_mapinfo.at[i,f'INSTALACAO_PROVEDOR_{p}'] = 0
+                                    retorno_mapinfo.at[i,f'MENSALIDADE_PROVEDOR_{p}'] = 0
+                                    retorno_mapinfo.at[i,f'STATUS_NUVEM'] = f'INVIAVEL POR NUVEM/SEM CONTRATO COM VELOCIDADE SOLICITADA'
                             elif len(valores[(valores.PROVEDOR == p) & (valores.SIGLA_MUNICIPIO == v.CNL) & (valores.VEL > v.VELOCIDADE) & (valores.PRAZO == '12 MESES')]) > 0:
                                 
                                 valor = valores[(valores.PROVEDOR == p) & (valores.SIGLA_MUNICIPIO == v.CNL) & (valores.VEL > v.VELOCIDADE) & (valores.PRAZO == '12 MESES')].sort_values(by=['VEL'],ascending=True)
@@ -426,7 +501,7 @@ def arquivo_retorno():
                     melhor_mensalidade = v[f'MENSALIDADE_PROVEDOR_{p}']
                     retorno_mapinfo.at[i,'INVIAVEL'] = ''
                 else:
-                    if (melhor_mensalidade + (melhor_instalacao / 12)) > (v[f'MENSALIDADE_PROVEDOR_{p}'] + (v[f'INSTALACAO_PROVEDOR_{p}'] / 12)):
+                    if (melhor_mensalidade + (melhor_instalacao / MESES)) > (v[f'MENSALIDADE_PROVEDOR_{p}'] + (v[f'INSTALACAO_PROVEDOR_{p}'] / MESES)):
                         melhor_provedor = p
                         melhor_instalacao = v[f'INSTALACAO_PROVEDOR_{p}']
                         melhor_mensalidade = v[f'MENSALIDADE_PROVEDOR_{p}']
@@ -469,7 +544,10 @@ def arquivo_retorno():
 
     for i, v in retorno_mapinfo.iterrows():
         provedor = ids_provedores[(ids_provedores.PROVEDOR == v.ESCOLHA_PROVEDOR_FINAL) & (ids_provedores.UF == v.UF)]
-        if len(provedor) <= 0:
+        if v.ESCOLHA_PROVEDOR_FINAL == 'GENERICO - BANDA LARGA':
+            retorno_mapinfo.at[i,'EMPRESA'] = 'GENERICO - BANDA LARGA'
+            retorno_mapinfo.at[i,'ID_TEIA'] = 1826
+        elif len(provedor) <= 0:
             retorno_mapinfo.at[i,'INVIAVEL'] = 'S'
         else:
             retorno_mapinfo.at[i,'EMPRESA'] = provedor.EMPRESA.values[0]
@@ -599,6 +677,11 @@ titulo_teia.place(x=10,y=70)
 button_browse = ctk.CTkButton(janela,text="Arquivo TEIA",height=20,width=35,corner_radius=8,fg_color='grey',hover_color='blue', command=arquivo_entrada)
 button_browse.place(x=10,y=100)
 
+titulo_meses= ctk.CTkLabel(janela,text='Selecione a quantidade de meses')
+titulo_meses.place(x=250,y=70)
+
+meses = ctk.CTkOptionMenu(janela,values=['12','24','36','48','60','72','84'],fg_color='grey',button_color='grey',button_hover_color='blue')
+meses.place(x=250,y=100)
 
 button_gera_mapinfo = ctk.CTkButton(janela,text="Gerar Arquivo para mapinfo",height=20,width=35,corner_radius=8,fg_color='grey',hover_color='blue', command=gerar_arq_mapinfo)
 button_gera_mapinfo.place(x=10,y=200)
