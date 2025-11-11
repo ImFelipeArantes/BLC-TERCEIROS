@@ -12,13 +12,19 @@ now = datetime.now().strftime('%d_%m_%Y')
 janela = ctk.CTk()
 
 engine = create_engine('mysql+pymysql://viabilidade:senha_segura123#@10.0.15.243:3306/desenvolvimento_viabilidade')
-
+municipio_localidade = pd.read_excel('./arquivos/municipio_localidade.xlsx')
 
 
 def arquivo_entrada():
     global arquivo_entrada_sevs_teia, sevs_teia, modelo_mapinfo
     arquivo_entrada_sevs_teia = ctk.filedialog.askopenfilename(title='Abrir arquivo de extração do TEIA')
     sevs_teia = pd.read_excel(arquivo_entrada_sevs_teia)
+    for index, value in sevs_teia.iterrows():
+        aux = municipio_localidade[municipio_localidade.SIGLA_LOC == value.CNL]
+        if len(aux) > 0:
+            sevs_teia.at[index,'CNL'] = aux.CNL.values[0]
+        else:
+            print(f'{value.SEV} nao encontrou CNL')
     modelo_mapinfo = pd.read_excel('./arquivos/arquivo_modelo.xlsx')
     modelo_mapinfo[['SEV', 'LAT', 'LONG']] = sevs_teia[['SEV', 'LATITUDE', 'LONGITUDE']]
     
