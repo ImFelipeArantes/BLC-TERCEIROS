@@ -648,6 +648,7 @@ def arquivo_retorno():
     ]]
 
     for i, v in fechamento.iterrows():
+        fechamento.at[i,'tecnologia'] = 'TERCEIRO BL'
         if isinstance( v.latitude, float ):
             fechamento.at[i,'latitude'] = str(v.latitude).replace('.',',')
         if isinstance( v.longitude, float ):
