@@ -127,7 +127,10 @@ def arquivo_retorno():
 
         valores =  valores_[valores_.SIGLA_MUNICIPIO == v.CNL]
         if v['RESTRICAO_SHOPPING'] != 'NOK':                 
-            retorno_mapinfo.at[i,f'STATUS_SHOPPING'] = 'INVIAVEL RESTRICAO SHOPPING'
+            if v['RESTRICAO_SHOPPING'] == 'SHOPPING':
+                retorno_mapinfo.at[i,f'STATUS_SHOPPING'] = 'INVIAVEL RESTRICAO SHOPPING'
+            else:
+                retorno_mapinfo.at[i,f'STATUS_SHOPPING'] = f'INVIAVEL RESTRICAO {v.RESTRICAO_SHOPPING}'
         else:
             retorno_mapinfo.at[i,f'STATUS_SHOPPING'] = 'SEM RETRICAO DE SHOPPING'
             
@@ -321,7 +324,7 @@ def arquivo_retorno():
                                         retorno_mapinfo.at[i,f'INSTALACAO_PROVEDOR_{p}'] = 0
                                         retorno_mapinfo.at[i,f'MENSALIDADE_PROVEDOR_{p}'] = 0
                                         retorno_mapinfo.at[i,f'STATUS_NUVEM'] = 'SHOPPING VIAVEL POR NUVEM CUSTO PADRAO'
-                        else:
+                        elif retorno_mapinfo.at[i,f'STATUS_SHOPPING'] == 'SEM RETRICAO DE SHOPPING':
                             valor = valores[(valores.PROVEDOR == p) & (valores.SIGLA_MUNICIPIO == v.CNL) & (valores.OBS.str.contains('TABELA 1'))]
                             if len(valor) > 0:
 
