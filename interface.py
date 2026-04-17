@@ -246,7 +246,6 @@ def arquivo_retorno():
             #                     retorno_mapinfo.at[i,f'STATUS_NUVEM'] = retorno_mapinfo.at[i,f'STATUS_NUVEM']+f'/{p} SEM PRECO PARA VELOCIDADE SOLICITADA E DENTRO DE NUVEM GENERICA'
             
             else:
-
                 if v[p] == 'NOK':
                     if v['NUVEM_GENERICA'] == 'NOK':
                         
