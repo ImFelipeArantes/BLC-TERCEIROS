@@ -378,7 +378,7 @@ def arquivo_retorno():
                                         retorno_mapinfo.at[i,f'INSTALACAO_PROVEDOR_{p}'] = 0
                                         retorno_mapinfo.at[i,f'MENSALIDADE_PROVEDOR_{p}'] = 0
                                         retorno_mapinfo.at[i,f'STATUS_NUVEM'] = f'INVIAVEL POR NUVEM/SEM CONTRATO COM VELOCIDADE SOLICITADA'
-                    else:
+                    if p != 'TALKD':
 
                         valor = valores[(valores.PROVEDOR == p) & (valores.SIGLA_MUNICIPIO == v.CNL)]
                         if len(valor) > 0:
@@ -436,6 +436,8 @@ def arquivo_retorno():
                                     retorno_mapinfo.at[i,f'INSTALACAO_PROVEDOR_{p}'] = 0
                                     retorno_mapinfo.at[i,f'MENSALIDADE_PROVEDOR_{p}'] = 0
                                     retorno_mapinfo.at[i,f'STATUS_NUVEM'] = f'INVIAVEL POR NUVEM/SEM CONTRATO COM VELOCIDADE SOLICITADA'
+
+    retorno_mapinfo.to_excel('teste.xlsx',index=False)
 
     for i,v in retorno_mapinfo.iterrows():
         melhor_instalacao = 0
