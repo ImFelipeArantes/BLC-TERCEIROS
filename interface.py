@@ -47,7 +47,11 @@ def gerar_arq_mapinfo():
         print('NAO FOI POSSIVEL CONECTAR NO BANCO DE DADOS')
         valores_ = pd.read_excel('./arquivos/valores_terceiros_internet.xlsx')
         pass
-    modelo_mapinfo.fillna('').to_excel(f'SAIDAS/arquivo_mapinfo_{now}.xlsx',index=False)
+
+    modelo_mapinfo_ = modelo_mapinfo.copy(deep=True)
+    modelo_mapinfo_.columns = modelo_mapinfo_.columns.str.replace(r'[^a-zA-Z0-9]', '_', regex=True)
+    # modelo_mapinfo.fillna('').to_excel(f'SAIDAS/arquivo_mapinfo_{now}.xlsx',index=False)
+    modelo_mapinfo_.fillna('').to_excel(f'SAIDAS/arquivo_mapinfo_{now}.xlsx',index=False)
 
     ###### SUBSTITUI VOGEL PELA ALGAR ##################
     # for i, v in provedores.iterrows():
