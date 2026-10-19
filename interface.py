@@ -19,7 +19,13 @@ municipio_localidade = pd.read_excel('./arquivos/municipio_localidade.xlsx')
 def arquivo_entrada():
     global arquivo_entrada_sevs_teia, sevs_teia, modelo_mapinfo
     arquivo_entrada_sevs_teia = ctk.filedialog.askopenfilename(title='Abrir arquivo de extração do TEIA')
-    sevs_teia = pd.read_csv(arquivo_entrada_sevs_teia, sep=';')
+    try:
+        sevs_teia = pd.read_csv(arquivo_entrada_sevs_teia, sep=';')
+        print('Leitura de arquivo CSV concluida')
+    except:
+        sevs_teia = pd.read_excel(arquivo_entrada_sevs_teia)
+        print('Leitura de arquivo Excel concluida')
+
     for index, value in sevs_teia.iterrows():
         aux = municipio_localidade[municipio_localidade.SIGLA_LOC == value.CNL]
         if len(aux) > 0:
@@ -109,6 +115,13 @@ def arquivo_retorno():
     retorno_mapinfo = pd.read_excel(arquivo_retorno_map_info).fillna('NOK')
 
     retorno_mapinfo.columns = modelo_mapinfo.columns.tolist()
+
+    ###### MEDIDA PROVISORIA PARA PRIORIZAR DESKTOP | REMOVER ASSIM QUE ABSORVIDA A REDE DA TERCEIRA #########
+    for i, v in retorno_mapinfo[retorno_mapinfo.DESKTOP != 'NOK'].iterrows():
+
+        for p in provedores_nuvem[provedores_nuvem.PROVEDOR != 'DESKTOP'].PROVEDOR.tolist():
+            if v[p] != 'NOK':
+                retorno_mapinfo.at[i,p] = 'NOK'
 
     for i, v in retorno_mapinfo.iterrows():
         retorno_mapinfo.at[i,'ID_SEV'] = sevs_teia[sevs_teia.SEV == v.SEV].ID_ANALISE.values[0]
